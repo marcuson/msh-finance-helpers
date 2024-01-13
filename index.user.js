@@ -5,7 +5,7 @@
 // @description Helpers for MSH finance.
 // @match       https://digital.mps.it/
 // @match       https://digital.mps.it/*
-// @version     1.0.0
+// @version     1.1.0
 // @author      marcuson
 // @license     GPL-3.0-or-later
 // @downloadURL https://github.com/marcuson/msh-finance-helpers/raw/gh-pages/index.user.js
@@ -368,19 +368,25 @@ function listenForDOMThread() {
 async function onUploadBtnClick(e) {
   e.preventDefault();
   e.stopPropagation();
-  const opts = await getOpts();
-  if (!(opts != null && opts.uploadUrl)) {
-    toast('error', 'Configure upload URL first!');
-    return;
+  try {
+    const opts = await getOpts();
+    if (!(opts != null && opts.uploadUrl)) {
+      toast('error', 'Configure upload URL first!');
+      return;
+    }
+    const qif = await downloadQIF();
+    await fetch(opts.uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/qif'
+      },
+      body: qif
+    });
+    toast('success', 'Data updated!');
+  } catch (e) {
+    console.error(e);
+    toast('error', JSON.stringify(e));
   }
-  const qif = await downloadQIF();
-  await fetch(opts.uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/qif'
-    },
-    body: qif
-  });
 }
 async function onOptionsBtnClick(e) {
   e.preventDefault();
@@ -392,69 +398,6 @@ async function downloadQIF() {
   const qif = await fetch(url).then(x => x.text());
   return qif;
 }
-
-// function listenForDOMThreadImages(inboxThread: Element): () => void {
-//   return VM.observe(inboxThread, () => {
-//     const imageNodes = [
-//       ...document.querySelectorAll('div[role=img][data-testid^=image-asset-]'),
-//     ].filter(
-//       (x) =>
-//         x.getAttribute('data-mfh-augmented') !== 'true' &&
-//         x.getAttribute('data-testid') !== 'image-asset-undefined'
-//     );
-
-//     if (imageNodes.length <= 0) {
-//       return;
-//     }
-
-//     for (const imageNode of imageNodes) {
-//       const imageUrlUnprocessed = imageNode.getAttribute('data-testid');
-//       const actualWidthMatches = imageUrlUnprocessed.match(/im_w=(?<w>[0-9]+)/);
-//       if (actualWidthMatches.length <= 0) {
-//         continue;
-//       }
-
-//       const actualWidth = parseInt(actualWidthMatches.groups.w);
-//       const newWidth = actualWidth * 3;
-//       const newImageUrl = imageUrlUnprocessed
-//         .replace('image-asset-', '')
-//         .replace(actualWidthMatches[0], `im_w=${newWidth}`);
-
-//       const downloadBtn = VM.m(
-//         <button
-//           class={styles.imgDownloadBtn}
-//           onclick={async (e: Event) => {
-//             e.preventDefault();
-//             e.stopPropagation();
-//             await downloadImg(newImageUrl);
-//           }}
-//         >
-//           <i icon-name="download"></i>
-//         </button>
-//       );
-
-//       const addImageToPdfBtn = VM.m(
-//         <button
-//           class={styles.imgDownloadBtn}
-//           onclick={async (e: Event) => {
-//             e.preventDefault();
-//             e.stopPropagation();
-//             addImageToPdfConvert(newImageUrl);
-//           }}
-//         >
-//           <i icon-name="file-text"></i>
-//         </button>
-//       );
-
-//       imageNode.classList.add(styles.imgContainer);
-//       imageNode.appendChild(downloadBtn);
-//       imageNode.appendChild(addImageToPdfBtn);
-//       imageNode.setAttribute('data-mfh-augmented', 'true');
-//     }
-
-//     createIcons({ icons: { Download, FileText } });
-//   });
-// }
 
 const moduleDef = {
   name: 'cc-transactions',
